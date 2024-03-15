@@ -240,10 +240,11 @@ class BangladeshModel(Model):
             model_lat = row['lat']
             model_lon = row['lon']
             model_ID = row["id"]
+           # model_weight = row["length"]
             if model_type == "link":
                 previous_id = df_network.at[index-1,"id"]
                 upcoming_id = df_network.at[index+1,"id"]
-                Network.add_edge(previous_id, upcoming_id)
+                Network.add_edge(previous_id, upcoming_id) #model_weight = length)
 
 
 
