@@ -62,7 +62,7 @@ class BangladeshModel(Model):
 
     step_time = 1
 
-    file_name = '../data/demo-4.csv'
+    file_name = ('../data/N1N2.csv')
 
     def __init__(self, seed=None,scenario = [0,[0,0,0,0]], x_max=500, y_max=500, x_min=0, y_min=0):
 
@@ -106,7 +106,8 @@ class BangladeshModel(Model):
 
         # a list of names of roads to be generated
         # TODO You can also read in the road column to generate this list automatically
-        roads = ['N1', 'N2']
+        # roads = ['N1', 'N2']
+        roads = df['road'].unique()
 
         df_objects_all = []
         for road in roads:
@@ -216,43 +217,38 @@ class BangladeshModel(Model):
         """
         Make the network using networkx, load in csv file
         """
-    # make a clean networkx graph
-        Network = nx.Graph()
-    #load in the file of the network (using bangladesh model)
+        # make a clean networkx graph
+        network = nx.Graph()
+        # load in the file of the network (using bangladesh model)
         df_network = pd.read_csv(self.file_name)
 
-        #a source sink or bridge is a node -> find them in the csv and add them using for loop, position is the lon and lat
-        for _,row in df_network.iterrows():
+        # A source sink or bridge is a node ->
+        # find them in the csv and add them using for loop, position is the lon and lat
+        for _, row in df_network.iterrows():
             model_type = row['model_type'].strip()
             model_lat = row['lat']
             model_lon = row['lon']
             model_ID = row["id"]
-            print(model_type)
-            if model_type =="sourcesink":
-                Network.add_node(model_ID, pos=(model_lat,model_lon))
-            elif model_type =="bridge":
-                Network.add_node(model_ID, pos=(model_lat, model_lon))
+            # print(model_type)
+            if model_type == "sourcesink":
+                network.add_node(model_ID, pos=(model_lat,model_lon))
+            elif model_type == "bridge":
+                network.add_node(model_ID, pos=(model_lat, model_lon))
             elif model_type == "intersection":
-                Network.add_node(model_ID, pos=(model_lat, model_lon))
-        #add the links between the nodes using the index of the previous and upcoming row of the dataframe.
+                network.add_node(model_ID, pos=(model_lat, model_lon))
+
+        # Add the links between the nodes using the index of the previous and upcoming row of the dataframe.
         for index, row in df_network.iterrows():
             model_type = row['model_type'].strip()
-            model_lat = row['lat']
-            model_lon = row['lon']
-            model_ID = row["id"]
            # model_weight = row["length"]
             if model_type == "link":
-                previous_id = df_network.at[index-1,"id"]
-                upcoming_id = df_network.at[index+1,"id"]
-                Network.add_edge(previous_id, upcoming_id) #model_weight = length)
+                previous_id = df_network.at[index-1, "id"]
+                upcoming_id = df_network.at[index+1, "id"]
+                network.add_edge(previous_id, upcoming_id)# model_weight = length)
 
-
-
-
-        #plot the network, with the ID as a label for the node
-
-        nx.draw(Network,with_labels = True)
-        plt.show()
+        # #plot the network, with the ID as a label for the node
+        # nx.draw(network, with_labels=True)
+        # plt.show()
 
 
 # EOF -----------------------------------------------------------

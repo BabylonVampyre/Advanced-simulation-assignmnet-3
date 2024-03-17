@@ -15,23 +15,34 @@ def extract_data():
     # Read the CSV file into a DataFrame
     df_read = pd.read_excel(file_path, header=0)  # header=0 means use the first row as column names
     # Select all rows where the column "road" is equal to "N1"
-    bridge_df = df_read[df_read['road'] == 'N1']
+    # bridge_df = df_read[df_read['road'] == 'N107']
+    bridge_df = df_read[df_read['road'].str.startswith(('N1', 'N2')) | df_read['road'].str.endswith(('N1', 'N2'))]
+    # bridge_df = df_read[df_read['road'].isin(['N1', 'N2'])]
+
     # List of column names to remove
     columns_to_remove = ['type', 'roadName', 'structureNr', 'width', 'constructionYear', 'spans', 'zone',
                          'circle', 'division', 'sub-division', 'EstimatedLoc']
     # Drop the specified columns
     bridge_df = bridge_df.drop(columns=columns_to_remove)
 
-    bridge_df = bridge_df[bridge_df['chainage'] <= 241.063]
+    # Identify roads that are long enough
+    valid_roads = bridge_df.groupby('road')['chainage'].max() > 25
+    # print("valid roads\n", valid_roads)
 
-    return bridge_df
+    # Filter the DataFrame to keep only the records where the road is in valid_roads
+    df_filtered = bridge_df[bridge_df['road'].isin(valid_roads.index[valid_roads])]
+
+    return df_filtered
 
 
 def sort_and_remove_duplicates(df):
+    # print("df at the begining of sort_and_remove_dupes\n", df)
     """
     This method sorts the dataframe based on the chainage, and then removes any duplicates from those columns
     """
-    ordered_df = df.sort_values(by='chainage')
+    ordered_df = df.sort_values(by=['road', 'chainage'])
+
+    # print(ordered_df.head(30))
     # Define custom aggregation functions
     aggregations = {
         'condition': 'max',  # Keep the worst grade
@@ -44,22 +55,25 @@ def sort_and_remove_duplicates(df):
         'name': 'first'
     }
     # Apply groupby with custom aggregations
-    dropped_df = ordered_df.groupby('LRPName').agg(aggregations)
+    dropped_df = ordered_df.groupby(['LRPName', 'road']).agg(aggregations)
     dropped_df['name'] = (dropped_df['name']
                           .str.lower()
                           .str.replace('r', 'l')
                           .str.replace(' ', '')
                           .str.replace('.', ''))
 
-    dropped_df = dropped_df.groupby('name').agg(aggregations)
+    dropped_df.reset_index(drop=True, inplace=True)
+    dropped_df = dropped_df.groupby(['name', 'road']).agg(aggregations)
     dropped_df.reset_index(drop=True, inplace=True)
 
-    dropped_df = dropped_df.groupby('chainage').agg(aggregations)
+    dropped_df = dropped_df.groupby(['chainage', 'road']).agg(aggregations)
     dropped_df.reset_index(drop=True, inplace=True)
 
     dropped_df.drop(columns=['name'], inplace=True)
+    sorted_df = dropped_df.sort_values(by=['road', 'chainage'])
+    sorted_df.reset_index(drop=True, inplace=True)
+    return sorted_df
 
-    return dropped_df
 
 
 def add_modeltype_name(df):
@@ -84,36 +98,61 @@ def reorder_columns(df):
     return df
 
 
-def create_source_sink():
+def create_source_sink(roads):
     """
     This method makes a source and a sink dataframe
     """
     # Read the CSV file into a DataFrame
     df = pd.read_csv("../data/_roads3.csv", header=0)
     # Select all rows where the column "road" is equal to "N1"
-    road_df = df[df['road'] == 'N1']
-    # add model types and names for the source and sink dataframes
-    start_end_road_df = (road_df[road_df['name'].str
-                         .startswith(('Start of Road', 'Chittagong city area ends and the survey of N1 starts again'))]
-                         .copy())
+    road_df = df[['road', 'name', 'lat', 'lon', 'chainage']]
+    filtered_df = road_df[road_df['road'].isin(roads)]
+
+    # Define a function to get first and last rows for each group
+    def first_last_rows(group):
+        return pd.concat([group.iloc[[0]], group.iloc[[-1]]])
+
+    # Apply the function to the DataFrame grouped by 'road'
+    start_end_road_df = filtered_df.groupby('road').apply(first_last_rows).reset_index(drop=True)
+
     start_end_road_df['model_type'] = 'sourcesink'
     start_end_road_df['name'] = 'sourcesink'
-    return start_end_road_df
 
-
-def format_source_sink(source_sink_df):
-    """
-    This method removes unnecessary columns from the dataframe, renames lrp to id, and adds a length
-    of 0. It also calls the reorder method to order to columns in the same format.
-    """
-    # Remove unnecessary columns
-    source_sink_df.drop(columns=['gap', 'type', 'lrp'], inplace=True)
     # Add a length column, which is assumed to be 1
-    source_sink_df['length'] = 0
-    source_sink_df['condition'] = np.NAN
+    start_end_road_df['length'] = 0
+    start_end_road_df['condition'] = np.NAN
     # Put them in the correct order.
-    source_sink_df = reorder_columns(source_sink_df)
+    source_sink_df = reorder_columns(start_end_road_df)
+
     return source_sink_df
+
+
+def add_source_sink(df, source_sink_df):
+    new_df = pd.DataFrame(columns=df.columns)
+    prev_value = 'N1'
+
+    # Insert a row for the first entry
+    new_df.loc[0] = source_sink_df.iloc[0]
+    counter = 1
+
+    for index, row in df.iterrows():
+        if row['road'] != prev_value:
+            #add a sourcsink row for the beginning
+            row_to_insert = source_sink_df.iloc[counter]
+            new_df.loc[len(new_df)] = row_to_insert
+            counter += 1
+            #add a sourcsink row for the end
+            row_to_insert = source_sink_df.iloc[counter]
+            new_df.loc[len(new_df)] = row_to_insert
+            counter += 1
+
+        new_df.loc[len(new_df)] = df.iloc[index]
+        prev_value = row['road']
+
+    # Insert a row for the last entry
+    new_df.loc[len(new_df)] = source_sink_df.iloc[-1]
+    return new_df
+
 
 
 def add_links(df):
@@ -125,6 +164,9 @@ def add_links(df):
     for i in range(len(df) - 1):
         row_before = df.iloc[i]
         row_after = df.iloc[i + 1]
+        if row_before['road'] != row_after['road']:
+            new_dfs.append(pd.DataFrame([row_before]))
+            continue
         new_row = {
             # put the link inbetween the two bridges
             'chainage': row_before['chainage'] + (row_after['chainage'] - row_before['chainage']) / 2,
@@ -144,8 +186,8 @@ def add_links(df):
 
     # Append the last row of the original DataFrame
     new_dfs.append(pd.DataFrame([df.iloc[-1]]))
-
-    return pd.concat(new_dfs, ignore_index=True)
+    concatted_df = pd.concat(new_dfs, ignore_index=True)
+    return concatted_df
 
 
 def remove_chainage_and_add_id(df):
@@ -154,10 +196,14 @@ def remove_chainage_and_add_id(df):
     giving each row a unique id starting from 200000
     """
     # Remove chainage
-    df = df.drop(columns=['chainage'])
+    # df = df.drop(columns=['chainage'])
     # Insert an id column
     df.insert(1, 'id', range(200000, 200000 + len(df)))
     return df
+
+def add_intersections(df):
+
+
 
 
 # Here, all functions are called sequentially
@@ -167,33 +213,48 @@ extracted_df = extract_data()
 
 # Sort the data and remove the duplicates
 sorted_df = sort_and_remove_duplicates(extracted_df)
+# print('sorted_df\n', sorted_df)
 
 # Add missing columns: model_type, name
 full_df = add_modeltype_name(sorted_df)
+# print('full_df\n', full_df)
 
 # Reorder the columns so they match the format
 reordered_df = reorder_columns(full_df)
+# print('reordered_df\n', reordered_df.head(10))
 
-# Create dataframes for the source and sink line
-start_end_of_road_df = create_source_sink()
+roads = reordered_df['road'].unique()
+
+start_end_of_road_df = create_source_sink(roads)
+print('start_end_of_road_df\n', start_end_of_road_df.head(10))
 
 # Format these source and sink dataframes
-formatted_start_end_of_road_df = format_source_sink(start_end_of_road_df)
+# formatted_start_end_of_road_df = format_source_sink(start_end_of_road_df)
 
-# Insert the source before the main dataframe and the sink after words
-combined_df = pd.concat([formatted_start_end_of_road_df.iloc[[0]], reordered_df,
-                         formatted_start_end_of_road_df.iloc[[1]]])
+# # Insert the source before the main dataframe and the sink after words
+# combined_df = pd.concat([start_end_of_road_df.iloc[[0]], reordered_df,
+#                          start_end_of_road_df.iloc[[1]]])
+
+combined_df = add_source_sink(df=reordered_df, source_sink_df=start_end_of_road_df)
+# print('combined_df\n', combined_df)
+
+combined_df.to_csv('../data/combined.csv', index=False)
 
 
 # Add all the links
 with_links_df = add_links(combined_df)
 
+with_intersections_df = add_intersections(with_links_df)
+
 # Remove the chainage column and give each record a unique id
 final_df = remove_chainage_and_add_id(with_links_df)
 
+with_intersections_df = add_intersections(final_df)
+
+
 # Display the DataFrame
-print(final_df)
-print(final_df['length'].sum())
+# print(final_df)
+# print(final_df['length'].sum())
 
 # Save to a csv file in the same folder as the other demos
-final_df.to_csv('../data/N1.csv', index=False)
+final_df.to_csv('../data/N1N2.csv', index=False)
