@@ -247,8 +247,8 @@ class BangladeshModel(Model):
                 network.add_edge(previous_id, upcoming_id)# model_weight = length)
 
         # #plot the network, with the ID as a label for the node
-        # nx.draw(network, with_labels=True)
-        # plt.show()
-
+        pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
+        nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
+        plt.show()
 
 # EOF -----------------------------------------------------------
