@@ -62,7 +62,7 @@ class BangladeshModel(Model):
 
     step_time = 1
 
-    file_name = ('../data/N1N2.csv')
+    file_name = ('../data/demo-4.csv')
 
     def __init__(self, seed=None,scenario = [0,[0,0,0,0]], x_max=500, y_max=500, x_min=0, y_min=0):
 
@@ -80,7 +80,7 @@ class BangladeshModel(Model):
         self.possible_catagories = ['A','B','C','D']
 
         self.generate_model()
-        self.generate_network()
+        self.network = self.generate_network()
         self.model_reporters = {}
         self.agent_reporters = {}
         self.model_vars = {}
@@ -124,10 +124,12 @@ class BangladeshModel(Model):
                 3. put the path in reversed order and reindex
                 4. add the path to the path_ids_dict so that the vehicles can drive backwards too
                 """
+                #add the path
                 path_ids = df_objects_on_road['id']
                 path_ids.reset_index(inplace=True, drop=True)
                 self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
                 self.path_ids_dict[path_ids[0], None] = path_ids
+                #now also the reverse path
                 path_ids = path_ids[::-1]
                 path_ids.reset_index(inplace=True, drop=True)
                 self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
@@ -206,6 +208,31 @@ class BangladeshModel(Model):
         """
         return self.path_ids_dict[source, None]
 
+    def get_specific_route(self,source,target):
+        if (source,target) in self.path_ids_dict:
+            return self.path_ids_dict[source, target]
+
+        else: #generate specific path
+
+            #generate lists of node and edge ids (sadly not one function to generate one list directly)
+            node_ids = nx.shortest_path(self.network, source=source, target=target, method="dijkstra") #returns list of all steps
+            edge_ids = [self.network[u][v]['link_id'] for u,v in zip(node_ids,node_ids[1:])]
+
+            #interweaving the lists
+            path_ids = [x for y in zip(node_ids, edge_ids) for x in y] + [node_ids[-1]] #assuming the nodes list is 1 longer than the edge list.
+
+            # add the path
+            self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
+            self.path_ids_dict[path_ids[0], None] = path_ids
+
+            # now also the reverse path
+            path_ids = path_ids[::-1]
+            self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
+            self.path_ids_dict[path_ids[0], None] = path_ids
+
+            #return the specific route
+            return self.path_ids_dict[source, target]
+
     def step(self):
         """
         Advance the simulation by one step.
@@ -240,15 +267,19 @@ class BangladeshModel(Model):
         # Add the links between the nodes using the index of the previous and upcoming row of the dataframe.
         for index, row in df_network.iterrows():
             model_type = row['model_type'].strip()
-           # model_weight = row["length"]
             if model_type == "link":
                 previous_id = df_network.at[index-1, "id"]
                 upcoming_id = df_network.at[index+1, "id"]
-                network.add_edge(previous_id, upcoming_id)# model_weight = length)
+                model_weight = row["length"]
+                #add edge
+                network.add_edge(previous_id, upcoming_id, model_weight = model_weight)
+                #add link id as edge attribute
+                nx.set_edge_attributes(network, {(previous_id, upcoming_id): {"link_id": df_network.at[index, "id"]}})
 
         # #plot the network, with the ID as a label for the node
         pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
         nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
         plt.show()
+
 
 # EOF -----------------------------------------------------------
