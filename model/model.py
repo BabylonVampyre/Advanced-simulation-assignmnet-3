@@ -196,7 +196,7 @@ class BangladeshModel(Model):
             sink = self.random.choice(self.sinks)
             if sink is not source:
                 break
-        return self.path_ids_dict[source, sink]
+        return self.get_specific_route(source,sink)
 
     # TODO
     def get_route(self, source):
