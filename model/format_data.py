@@ -16,7 +16,7 @@ def extract_data():
     df_read = pd.read_excel(file_path, header=0)  # header=0 means use the first row as column names
     # Select all rows where the column "road" is equal to "N1"
     # bridge_df = df_read[df_read['road'] == 'N107']
-    bridge_df = df_read[df_read['road'].str.startswith(('N1', 'N2')) | df_read['road'].str.endswith(('N1', 'N2'))]
+    bridge_df = df_read[df_read['road'].str.startswith(('N1', 'N2'))]
     # bridge_df = df_read[df_read['road'].isin(['N1', 'N2'])]
 
     # List of column names to remove
@@ -201,7 +201,38 @@ def remove_chainage_and_add_id(df):
     df.insert(1, 'id', range(200000, 200000 + len(df)))
     return df
 
-def add_intersections(df):
+def create_intersections(df, roads):
+    roads = sorted(roads, key=len, reverse=True)
+
+
+    # Read the CSV file
+    read_df = pd.read_csv("../data/_roads3.csv", header=0)
+
+    # Select all rows where the column "road" is equal to any road in the roads list
+    road_df = read_df[['road', 'name', 'lat', 'lon', 'chainage', 'type']]
+    filtered_df = road_df[road_df['road'].isin(roads)]
+
+    # Define intersection names
+    intersection_names = ['CrossRoad', 'SideRoad']
+
+    # Filter the DataFrame to include only rows where the 'type' column contains any of the intersection names
+    mask_type = filtered_df['type'].apply(lambda x: any(name in x for name in intersection_names))
+    df_intersections = filtered_df[mask_type]
+
+    # Filter the intersections DataFrame to include only rows where the 'name' column contains any of the road names
+    mask_road = df_intersections['name'].apply(lambda x: any(name in x for name in roads))
+    df_N_intersections = df_intersections[mask_road]
+
+    print(roads)
+    # Add a new column 'connects_to' that contains the substring from the 'name' column
+    df_N_intersections['connects_to'] = df_N_intersections['name'].apply(
+        lambda x: next((name for name in roads if name in x), None))
+
+    # Save the resulting DataFrame to a CSV file
+    df_N_intersections.to_csv('../data/intersections.csv', index=False)
+
+def add_intersections(df, df_intersectinos):
+    return df
 
 
 
@@ -244,12 +275,11 @@ combined_df.to_csv('../data/combined.csv', index=False)
 # Add all the links
 with_links_df = add_links(combined_df)
 
-with_intersections_df = add_intersections(with_links_df)
+intersections_df = create_intersections(with_links_df, roads)
+with_intersections_df = add_intersections(with_links_df, intersections_df)
 
 # Remove the chainage column and give each record a unique id
 final_df = remove_chainage_and_add_id(with_links_df)
-
-with_intersections_df = add_intersections(final_df)
 
 
 # Display the DataFrame
