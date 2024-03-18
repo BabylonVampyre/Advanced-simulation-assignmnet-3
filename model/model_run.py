@@ -28,9 +28,8 @@ S4 = make_scenario(4,[5,10,20,40])
 # run time 1000 ticks
 run_length = 7200
 
-seed_list = [1234567, 1234568, 1234569, 1234560, 1234561,
-             1234562, 1234563, 1234564, 1234565, 1234566]
-scenario_list = [S0,S1,S2,S3,S4]
+seed_list = [1234567]
+scenario_list = [S0]
 
 number_of_runs = len(scenario_list)*len(seed_list)
 counter = 0
