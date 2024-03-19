@@ -201,7 +201,7 @@ def remove_chainage_and_add_id(df):
     # Insert an id column
     df.insert(1, 'unique_id', range(200000, 200000 + len(df)))
     df['id'] = df['intersection_id'].fillna(df['unique_id'])
-    df.drop(['intersection_id', 'unique_id'], axis=1, inplace=True)
+    df.drop(['intersection_id', 'unique_id', 'chainage'], axis=1, inplace=True)
     return df
 
 def create_inverse_intersections(df, df_intersections):
@@ -301,7 +301,8 @@ def create_intersections(df, roads):
 def add_intersections(df, df_intersectinos):
     concatenated_df = pd.concat([df, df_intersectinos], ignore_index=True)
     sorted_df = concatenated_df.sort_values(by=['road', 'chainage'])
-    return sorted_df
+    compact_df = sorted_df.drop(['type', 'connects_to'], axis=1, inplace=True)
+    return sorted_df.reset_index(drop=True)
 
 
 
