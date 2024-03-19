@@ -52,7 +52,7 @@ class Bridge(Infra):
     """
 
     def __init__(self, unique_id, model, length=0,
-                 name='Unknown', road_name='Unknown', condition='Unknown',scenario = [0,[0,0,0,0]], broken = False):
+                 name='Unknown', road_name='Unknown', condition='Unknown',scenario = [0,0,0,0], broken = False):
         super().__init__(unique_id, model, length, name, road_name)
 
         self.condition = condition
@@ -63,8 +63,7 @@ class Bridge(Infra):
         self.broken = broken
 
         #save scenario parameters
-        self.scenario_name = scenario[0]
-        self.breakdown_chances = scenario[1]
+        self.breakdown_chances = scenario
 
         #serach what index correspodes with the condition of the bridge
         index = self.model.possible_catagories.index(self.condition)
@@ -128,9 +127,8 @@ class Sink(Infra):
         # update the tick we are removing at
         self.tick_removing = self.model.schedule.steps
 
-        # append the truck to the list of vehicles this sink removes at this tick
-        self.vehicle_removed_driving_time.append(
-            [vehicle.unique_id, vehicle.removed_at_step - vehicle.generated_at_step])
+        #save the delition time and truckID into the dataframe that is saved as a model parameter
+        self.model.df_driving_time = self.model.df_driving_time._append({'Truck_ID': vehicle.unique_id, 'Total_Driving_Time': vehicle.removed_at_step - vehicle.generated_at_step}, ignore_index=True)
 
         self.model.schedule.remove(vehicle)
         self.vehicle_removed_toggle = not self.vehicle_removed_toggle

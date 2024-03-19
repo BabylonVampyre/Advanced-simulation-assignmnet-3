@@ -62,7 +62,7 @@ class BangladeshModel(Model):
 
     step_time = 1
 
-    file_name = ('../data/demo-4.csv')
+    file_name = ('../data/N1.csv')
 
     def __init__(self, seed=None,scenario = [0,[0,0,0,0]], x_max=500, y_max=500, x_min=0, y_min=0):
 
@@ -86,14 +86,15 @@ class BangladeshModel(Model):
         self.model_vars = {}
         self._agent_records = {}
         self.tables = {}
-        self.datacollector = mesa.DataCollector()
+        #self.datacollector = mesa.DataCollector()
+        self.df_driving_time = pd.DataFrame(columns=['Truck_ID', 'Total_Driving_Time'])
 
         # data collector of delay time and vehicle driving time when the vehicle has arrived at the sink
-        self.datacollector = mesa.DataCollector(model_reporters={},
-                                                agent_reporters={"Delay time": lambda a: get_delay(
-                                                    a) if a.__class__.__name__ == 'Bridge' else None,
-                                                                 "Driving time of cars leaving": lambda
-                                                                     a: a.vehicle_removed_driving_time if a.__class__.__name__ == 'Sink' or a.__class__.__name__ == 'SourceSink' else None})
+        #self.datacollector = mesa.DataCollector(model_reporters={},
+                                          #      agent_reporters={"Delay time": lambda a: get_delay(
+                                                   # a) if a.__class__.__name__ == 'Bridge' else None,
+                                                    #             "Driving time of cars leaving": lambda
+                                                    #                 a: a.vehicle_removed_driving_time if a.__class__.__name__ == 'Sink' or a.__class__.__name__ == 'SourceSink' else None})
 
     def generate_model(self):
         """
@@ -238,7 +239,7 @@ class BangladeshModel(Model):
         Advance the simulation by one step.
         """
         self.schedule.step()
-        self.datacollector.collect(self)
+        #self.datacollector.collect(self)
 
     def generate_network(self):
         """
@@ -278,8 +279,8 @@ class BangladeshModel(Model):
 
         # #plot the network, with the ID as a label for the node
         pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
-        nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
-        plt.show()
+        #nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
+        #plt.show()
 
 
 # EOF -----------------------------------------------------------
