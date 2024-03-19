@@ -301,7 +301,7 @@ def create_intersections(df, roads):
 def add_intersections(df, df_intersectinos):
     concatenated_df = pd.concat([df, df_intersectinos], ignore_index=True)
     sorted_df = concatenated_df.sort_values(by=['road', 'chainage'])
-    compact_df = sorted_df.drop(['type', 'connects_to'], axis=1, inplace=True)
+    # compact_df = sorted_df.drop(['type', 'connects_to'], axis=1, inplace=True)
     return sorted_df.reset_index(drop=True)
 
 
@@ -358,4 +358,25 @@ final_df = remove_chainage_and_add_id(with_links_df)
 # print(final_df['length'].sum())
 
 # Save to a csv file in the same folder as the other demos
+
+#TODO make this pretty
+
+# Indices of the rows you want to switch
+index1 = 2564  # Index of the first row
+index2 = 2562 # Index of the second row
+index3 = 1351
+index4 = 1353
+
+
+# Get the rows to be switched
+row1 = final_df.iloc[index1].copy()  # Use copy to avoid setting with copy warning
+row2 = final_df.iloc[index2].copy()
+row3 = final_df.iloc[index3].copy()
+row4 = final_df.iloc[index4].copy()
+
+# Swap the rows
+final_df.iloc[index1], final_df.iloc[index2] = row2, row1
+final_df.iloc[index3], final_df.iloc[index4] = row4, row3
+
+
 final_df.to_csv('../data/N1N2.csv', index=False)
