@@ -55,7 +55,7 @@ def agent_portrayal(agent):
         portrayal["r"] = max(agent.vehicle_count * 4, 2)
 
     # define text labels
-    if isinstance(agent, Source) or isinstance(agent, Sink):
+    if isinstance(agent, Source) or isinstance(agent, Sink) or isinstance(agent, Intersection):
         portrayal["Text"] = agent.name
         portrayal["Text_color"] = "DarkSlateGray"
 

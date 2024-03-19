@@ -17,6 +17,7 @@ def extract_data():
     # Select all rows where the column "road" is equal to "N1"
     # bridge_df = df_read[df_read['road'] == 'N107']
     bridge_df = df_read[df_read['road'].str.startswith(('N1', 'N2'))]
+    bridge_df = bridge_df[bridge_df['road'] != 'N106']
     # bridge_df = df_read[df_read['road'].isin(['N1', 'N2'])]
 
     # List of column names to remove
@@ -116,7 +117,7 @@ def create_source_sink(roads):
     start_end_road_df = filtered_df.groupby('road').apply(first_last_rows).reset_index(drop=True)
 
     start_end_road_df['model_type'] = 'sourcesink'
-    start_end_road_df['name'] = 'sourcesink'
+    start_end_road_df['name'] = 'ss'
 
     # Add a length column, which is assumed to be 1
     start_end_road_df['length'] = 0
@@ -198,8 +199,40 @@ def remove_chainage_and_add_id(df):
     # Remove chainage
     # df = df.drop(columns=['chainage'])
     # Insert an id column
-    df.insert(1, 'id', range(200000, 200000 + len(df)))
+    df.insert(1, 'unique_id', range(200000, 200000 + len(df)))
+    df['id'] = df['intersection_id'].fillna(df['unique_id'])
+    df.drop(['intersection_id', 'unique_id'], axis=1, inplace=True)
     return df
+
+def create_inverse_intersections(df, df_intersections):
+    # make a copy
+    # Assuming df_N_intersections is your DataFrame
+    df_intersections_copy = df_intersections.copy()
+
+    # # Swap values in 'road' and 'connects_to' columns
+    df_intersections_copy['road'], df_intersections_copy['connects_to'] = df_intersections_copy['connects_to'], \
+    df_intersections_copy['road']
+    # Iterate over each intersection in the copy
+    for index, row in df_intersections_copy.iterrows():
+        road_value = row['road']
+        lon_value = row['lon']
+
+        # Filter records with the same road value from the original DataFrame
+        same_road_records = df[df['road'] == road_value]
+
+        # Calculate the absolute differences between the longitude values
+        # and find the index of the record with the closest longitude
+        closest_lon_index = np.argmin(np.abs(same_road_records['lon'] - lon_value))
+
+        # Get the chainage value from the record with the closest longitude
+        chainage_value = same_road_records.iloc[closest_lon_index]['chainage']
+
+        # Update the chainage value in the copy DataFrame
+        df_intersections_copy.at[index, 'chainage'] = chainage_value
+
+    # # Set all values in the 'chainage' column to NaN
+    # df_intersections_copy['chainage'] = np.nan
+    return df_intersections_copy
 
 def create_intersections(df, roads):
     roads = sorted(roads, key=len, reverse=True)
@@ -228,11 +261,47 @@ def create_intersections(df, roads):
     df_N_intersections['connects_to'] = df_N_intersections['name'].apply(
         lambda x: next((name for name in roads if name in x), None))
 
+    df_N_intersections = df_N_intersections[df_N_intersections['road'] != df_N_intersections['connects_to']]
+
+    df_N_intersections = df_N_intersections[~(
+        df_N_intersections['name'].str.contains('N103 on Right') |
+        df_N_intersections['name'].str.contains('Intersection with N105') |
+        df_N_intersections['name'].str.contains('N209 / N208 to Moulovibazar')
+    )]
+
+    df_N_intersections.insert(1, 'intersection_id', range(100000, 100000 + len(df_N_intersections)))
+    df_N_intersections['length'] = 0
+    df_N_intersections['name'] = df_N_intersections['road'] + 'to' + df_N_intersections['connects_to']
+    df_inverse = create_inverse_intersections(df, df_N_intersections)
+
+
+    # # make a copy
+    # # Assuming df_N_intersections is your DataFrame
+    # df_N_intersections_copy = df_N_intersections.copy()
+    #
+    # # Swap values in 'road' and 'connects_to' columns
+    # df_N_intersections_copy['road'], df_N_intersections_copy['connects_to'] = df_N_intersections_copy['connects_to'], \
+    # df_N_intersections_copy['road']
+    #
+    # # Set all values in the 'chainage' column to NaN
+    # df_N_intersections_copy['chainage'] = np.nan
+
+    ## Here must add chainage
+    #
+
+    #concatotnate the copy with the original
+    concatenated_df = pd.concat([df_N_intersections, df_inverse], ignore_index=True)
+
+    concatenated_df['model_type'] = 'intersection'
+
     # Save the resulting DataFrame to a CSV file
-    df_N_intersections.to_csv('../data/intersections.csv', index=False)
+    concatenated_df.to_csv('../data/intersectionscombined.csv', index=False)
+    return concatenated_df
 
 def add_intersections(df, df_intersectinos):
-    return df
+    concatenated_df = pd.concat([df, df_intersectinos], ignore_index=True)
+    sorted_df = concatenated_df.sort_values(by=['road', 'chainage'])
+    return sorted_df
 
 
 
@@ -272,14 +341,15 @@ combined_df = add_source_sink(df=reordered_df, source_sink_df=start_end_of_road_
 combined_df.to_csv('../data/combined.csv', index=False)
 
 
-# Add all the links
-with_links_df = add_links(combined_df)
+intersections_df = create_intersections(combined_df, roads)
+with_intersections_df = add_intersections(combined_df, intersections_df)
 
-intersections_df = create_intersections(with_links_df, roads)
-with_intersections_df = add_intersections(with_links_df, intersections_df)
+with_links_df= add_links(with_intersections_df)
 
 # Remove the chainage column and give each record a unique id
 final_df = remove_chainage_and_add_id(with_links_df)
+
+
 
 
 # Display the DataFrame
