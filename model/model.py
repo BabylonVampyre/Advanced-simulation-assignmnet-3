@@ -62,7 +62,7 @@ class BangladeshModel(Model):
 
     step_time = 1
 
-    file_name = ('../data/N1.csv')
+    file_name = ('../data/N1N2.csv')
 
     def __init__(self, seed=None,scenario = [0,[0,0,0,0]], x_max=500, y_max=500, x_min=0, y_min=0):
 
@@ -201,7 +201,7 @@ class BangladeshModel(Model):
 
     # TODO
     def get_route(self, source):
-        return self.get_straight_route(source)
+        return self.get_random_route(source)
 
     def get_straight_route(self, source):
         """
@@ -223,15 +223,13 @@ class BangladeshModel(Model):
             path_ids = [x for y in zip(node_ids, edge_ids) for x in y] + [node_ids[-1]] #assuming the nodes list is 1 longer than the edge list.
 
             # add the path
-            self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
-            self.path_ids_dict[path_ids[0], None] = path_ids
+            self.path_ids_dict[path_ids[0], path_ids[-1]] = path_ids
 
             # now also the reverse path
             path_ids = path_ids[::-1]
-            self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
-            self.path_ids_dict[path_ids[0], None] = path_ids
+            self.path_ids_dict[path_ids[0], path_ids[-1]] = path_ids
 
-            #return the specific route
+            # #return the specific route
             return self.path_ids_dict[source, target]
 
     def step(self):
@@ -281,6 +279,8 @@ class BangladeshModel(Model):
         pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
         #nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
         #plt.show()
+
+        return network
 
 
 # EOF -----------------------------------------------------------
