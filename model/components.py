@@ -1,7 +1,6 @@
 from mesa import Agent
 from enum import Enum
-import numpy as np
-import random
+
 
 # ---------------------------------------------------------------
 class Infra(Agent):
@@ -52,7 +51,7 @@ class Bridge(Infra):
     """
 
     def __init__(self, unique_id, model, length=0,
-                 name='Unknown', road_name='Unknown', condition='Unknown',scenario = [0,0,0,0], broken = False):
+                 name='Unknown', road_name='Unknown', condition='Unknown', scenario=[0, 0, 0, 0], broken=False):
         super().__init__(unique_id, model, length, name, road_name)
 
         self.condition = condition
@@ -73,11 +72,6 @@ class Bridge(Infra):
         if self.chance_to_break >= (self.random.random() * 100):
             self.broken = True
 
-
-
-
-        # print(self.delay_time)
-
     def get_delay_time(self):
         if self.broken:
             if self.length <= 10:
@@ -89,7 +83,6 @@ class Bridge(Infra):
             else:
                 self.delay_time = self.random.triangular(60, 240, 120)
         return self.delay_time
-
 
 
 # ---------------------------------------------------------------
@@ -126,9 +119,9 @@ class Sink(Infra):
     def remove(self, vehicle):
         # update the tick we are removing at
         self.tick_removing = self.model.schedule.steps
-
+        total_driving_time = vehicle.removed_at_step - vehicle.generated_at_step
         #save the delition time and truckID into the dataframe that is saved as a model parameter
-        self.model.df_driving_time = self.model.df_driving_time._append({'Total_Driving_Time': vehicle.removed_at_step - vehicle.generated_at_step}, ignore_index=True)
+        self.model.df_driving_time = self.model.df_driving_time._append({'Total_Driving_Time': total_driving_time}, ignore_index=True)
 
         self.model.schedule.remove(vehicle)
         self.vehicle_removed_toggle = not self.vehicle_removed_toggle
@@ -271,6 +264,9 @@ class Vehicle(Agent):
         self.waited_at = None
         self.removed_at_step = None
 
+        #Set desitination as id of sink where it needs to be removed
+        self.destination = None
+
     def __str__(self):
         return "Vehicle" + str(self.unique_id) + \
                " +" + str(self.generated_at_step) + " -" + str(self.removed_at_step) + \
@@ -282,6 +278,8 @@ class Vehicle(Agent):
         Set the origin destination path of the vehicle
         """
         self.path_ids = self.model.get_route(self.generated_by.unique_id)
+        #save the target sink in the self.destination
+        self.destination = self.path_ids[-1]
 
     def step(self):
         """
@@ -324,7 +322,8 @@ class Vehicle(Agent):
         next_id = self.path_ids[self.location_index]
         next_infra = self.model.schedule._agents[next_id]  # Access to protected member _agents
 
-        if isinstance(next_infra, Sink):
+        #if the vehicle arrives at a sink and that sink is the one in its destination, arrive and remove
+        if isinstance(next_infra, Sink) and next_id == self.destination:
             # arrive at the sink
             self.arrive_at_next(next_infra, 0)
             self.removed_at_step = self.model.schedule.steps
