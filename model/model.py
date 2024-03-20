@@ -1,4 +1,3 @@
-import mesa
 from mesa import Model
 from mesa.time import BaseScheduler
 from mesa.space import ContinuousSpace
@@ -6,7 +5,7 @@ from components import Source, Sink, SourceSink, Bridge, Link, Intersection
 import pandas as pd
 from collections import defaultdict
 import networkx as nx
-import matplotlib.pyplot as plt
+
 
 # ---------------------------------------------------------------
 def set_lat_lon_bound(lat_min, lat_max, lon_min, lon_max, edge_ratio=0.02):
@@ -26,12 +25,15 @@ def set_lat_lon_bound(lat_min, lat_max, lon_min, lon_max, edge_ratio=0.02):
     y_min = lat_max + lat_edge
     return y_min, y_max, x_min, x_max
 
+
 # Get the delay time of a bridge to be used in the data collector
 def get_delay(agent):
     if type(agent) == Bridge:
         return agent.get_delay_time()
     else:
         return None
+
+
 # ---------------------------------------------------------------
 class BangladeshModel(Model):
     """
@@ -62,9 +64,9 @@ class BangladeshModel(Model):
 
     step_time = 1
 
-    file_name = ('../data/N1.csv')
+    file_name = ('../data/N1N2.csv')
 
-    def __init__(self, seed=None,scenario = [0,[0,0,0,0]], x_max=500, y_max=500, x_min=0, y_min=0):
+    def __init__(self, seed=None, scenario=[0, 0, 0, 0], x_max=500, y_max=500, x_min=0, y_min=0):
 
         self.schedule = BaseScheduler(self)
         self.running = True
@@ -77,8 +79,8 @@ class BangladeshModel(Model):
         self.random.seed(seed)
         #Save scenario to give to the agents in the initiation
         self.scenario = scenario
-        self.possible_catagories = ['A','B','C','D']
-
+        self.possible_catagories = ['A', 'B', 'C', 'D']
+        #generate the model and generate the networkX and save it
         self.generate_model()
         self.network = self.generate_network()
         self.model_reporters = {}
@@ -87,14 +89,7 @@ class BangladeshModel(Model):
         self._agent_records = {}
         self.tables = {}
         #self.datacollector = mesa.DataCollector()
-        self.df_driving_time = pd.DataFrame(columns=['Truck_ID', 'Total_Driving_Time'])
-
-        # data collector of delay time and vehicle driving time when the vehicle has arrived at the sink
-        #self.datacollector = mesa.DataCollector(model_reporters={},
-                                          #      agent_reporters={"Delay time": lambda a: get_delay(
-                                                   # a) if a.__class__.__name__ == 'Bridge' else None,
-                                                    #             "Driving time of cars leaving": lambda
-                                                    #                 a: a.vehicle_removed_driving_time if a.__class__.__name__ == 'Sink' or a.__class__.__name__ == 'SourceSink' else None})
+        self.df_driving_time = pd.DataFrame(columns=['Total_Driving_Time'])
 
     def generate_model(self):
         """
@@ -126,15 +121,16 @@ class BangladeshModel(Model):
                 4. add the path to the path_ids_dict so that the vehicles can drive backwards too
                 """
                 #add the path
+                #save the paths as lists to make it consistent with other paths that will be created
                 path_ids = df_objects_on_road['id']
                 path_ids.reset_index(inplace=True, drop=True)
-                self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
-                self.path_ids_dict[path_ids[0], None] = path_ids
+                self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids.tolist()
+                self.path_ids_dict[path_ids[0], None] = path_ids.tolist()
                 #now also the reverse path
                 path_ids = path_ids[::-1]
                 path_ids.reset_index(inplace=True, drop=True)
-                self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
-                self.path_ids_dict[path_ids[0], None] = path_ids
+                self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids.tolist()
+                self.path_ids_dict[path_ids[0], None] = path_ids.tolist()
 
         # put back to df with selected roads so that min and max and be easily calculated
         df = pd.concat(df_objects_all)
@@ -174,7 +170,7 @@ class BangladeshModel(Model):
                     self.sources.append(agent.unique_id)
                     self.sinks.append(agent.unique_id)
                 elif model_type == 'bridge':
-                    agent = Bridge(row['id'], self, row['length'], name, row['road'], row['condition'],scenario=self.scenario)
+                    agent = Bridge(row['id'], self, row['length'], name, row['road'], row['condition'], scenario=self.scenario)
                 elif model_type == 'link':
                     agent = Link(row['id'], self, row['length'], name, row['road'])
                 elif model_type == 'intersection':
@@ -197,11 +193,11 @@ class BangladeshModel(Model):
             sink = self.random.choice(self.sinks)
             if sink is not source:
                 break
-        return self.get_specific_route(source,sink)
+        return self.get_specific_route(source, sink)
 
     # TODO
     def get_route(self, source):
-        return self.get_straight_route(source)
+        return self.get_random_route(source)
 
     def get_straight_route(self, source):
         """
@@ -209,29 +205,27 @@ class BangladeshModel(Model):
         """
         return self.path_ids_dict[source, None]
 
-    def get_specific_route(self,source,target):
-        if (source,target) in self.path_ids_dict:
+    def get_specific_route(self, source, target):
+        if (source, target) in self.path_ids_dict:
             return self.path_ids_dict[source, target]
 
-        else: #generate specific path
+        else:  #generate specific path
 
             #generate lists of node and edge ids (sadly not one function to generate one list directly)
-            node_ids = nx.shortest_path(self.network, source=source, target=target, method="dijkstra") #returns list of all steps
-            edge_ids = [self.network[u][v]['link_id'] for u,v in zip(node_ids,node_ids[1:])]
+            node_ids = nx.shortest_path(self.network, source=source, target=target, method="dijkstra")  #returns list of all steps
+            edge_ids = [self.network[u][v]['link_id'] for u, v in zip(node_ids, node_ids[1:])]
 
             #interweaving the lists
-            path_ids = [x for y in zip(node_ids, edge_ids) for x in y] + [node_ids[-1]] #assuming the nodes list is 1 longer than the edge list.
+            path_ids = [x for y in zip(node_ids, edge_ids) for x in y] + [node_ids[-1]]  #assuming the nodes list is 1 longer than the edge list.
 
             # add the path
-            self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
-            self.path_ids_dict[path_ids[0], None] = path_ids
+            self.path_ids_dict[path_ids[0], path_ids[-1]] = path_ids
 
             # now also the reverse path
             path_ids = path_ids[::-1]
-            self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids
-            self.path_ids_dict[path_ids[0], None] = path_ids
+            self.path_ids_dict[path_ids[0], path_ids[-1]] = path_ids
 
-            #return the specific route
+            # #return the specific route
             return self.path_ids_dict[source, target]
 
     def step(self):
@@ -259,7 +253,7 @@ class BangladeshModel(Model):
             model_ID = row["id"]
             # print(model_type)
             if model_type == "sourcesink":
-                network.add_node(model_ID, pos=(model_lat,model_lon))
+                network.add_node(model_ID, pos=(model_lat, model_lon))
             elif model_type == "bridge":
                 network.add_node(model_ID, pos=(model_lat, model_lon))
             elif model_type == "intersection":
@@ -273,14 +267,16 @@ class BangladeshModel(Model):
                 upcoming_id = df_network.at[index+1, "id"]
                 model_weight = row["length"]
                 #add edge
-                network.add_edge(previous_id, upcoming_id, model_weight = model_weight)
+                network.add_edge(previous_id, upcoming_id, model_weight=model_weight)
                 #add link id as edge attribute
                 nx.set_edge_attributes(network, {(previous_id, upcoming_id): {"link_id": df_network.at[index, "id"]}})
 
-        # #plot the network, with the ID as a label for the node
-        pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
-        #nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
-        #plt.show()
+#       plot the network, with the ID as a label for the node
+#       pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
+#       nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
+#       plt.show()
+
+        return network
 
 
 # EOF -----------------------------------------------------------
