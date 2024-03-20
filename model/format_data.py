@@ -95,19 +95,6 @@ def add_modeltype_name(df):
     return df
 
 
-# def reorder_columns(df):
-#     """
-#     This method reorders the column so that they match the demo csv files.
-#     :param df: The dataframe that needs re-ordering
-#     :return: A dataframe with the column in the right order
-#     """
-#     # Define the desired column order
-#     desired_column_order = ['road', 'model_type', 'name', 'lat', 'lon', 'length', 'chainage', 'condition']
-#     # Reassign the DataFrame with the desired column order
-#     df = df[desired_column_order]
-#     return df
-
-
 def create_inverse_intersections(df, df_intersections):
     """
     This helper method creates the inverse intersections. That means that if there is an intersection from the
@@ -115,7 +102,7 @@ def create_inverse_intersections(df, df_intersections):
     :param df: The dataframe to refer to find the correct chainage for the inverse intersections
     :param df_intersections: The dataframe with the intersections that need to be flipped
     """
-
+    df_intersections = df_intersections.copy()
     # Swap values in 'road' and 'connects_to' columns
     df_intersections['road'], df_intersections['connects_to'] = df_intersections['connects_to'], \
         df_intersections['road']
@@ -139,7 +126,7 @@ def create_inverse_intersections(df, df_intersections):
 
         # Update the chainage value in the copy DataFrame
         df_intersections.at[index, 'chainage'] = chainage_value
-
+    df_intersections.reset_index(drop=True)
     return df_intersections
 
 
@@ -208,6 +195,7 @@ def create_intersections(df, roads):
 
     # Combine the original intersections with the inverses
     concatenated_df = pd.concat([df_n_intersections, df_inverse], ignore_index=True)
+    concatenated_df.reset_index(drop=True)
 
     return concatenated_df
 
@@ -219,6 +207,8 @@ def add_intersections(df, df_intersections):
     :param df_intersections: the intersections that need to be inserted
     :return: the dataframe with newly added intersections
     """
+    print('Adding intersections...')
+    print(df_intersections)
     concatenated_df = pd.concat([df, df_intersections], ignore_index=True)
     sorted_concatenated_df = concatenated_df.sort_values(by=['road', 'chainage'])
     return sorted_concatenated_df.reset_index(drop=True)
@@ -250,10 +240,6 @@ def create_source_sink(roads):
 
     # Add a length column, which is assumed to be 0
     start_end_road_df['length'] = 0
-    # start_end_road_df['condition'] = np.NAN
-
-    # Put them in the correct order.
-    # source_sink_df = reorder_columns(start_end_road_df)
 
     return start_end_road_df
 
@@ -321,7 +307,6 @@ def add_links(df):
             # make the length be the difference of the cahinages of its neighbors, and multiply by 1000 to convert km->m
             # rounding is used to fix floating point rounding problems
             'length': max(0, round((row_after['chainage'] - row_before['chainage']) * 1000, 2)),
-            # 'condition': np.NAN
         }
 
         new_dfs.append(pd.concat([pd.DataFrame([row_before]), pd.DataFrame([new_row])], ignore_index=True))
@@ -342,7 +327,6 @@ def remove_columns_and_add_id(df):
     df.insert(1, 'unique_id', range(200000, 200000 + len(df)))
     # The id of the intersections must stay the same, the rest get a new id
     df['id'] = df['intersection_id'].fillna(df['unique_id'])
-    # df.drop(['intersection_id', 'unique_id', 'chainage', 'type', 'connects_to'], axis=1, inplace=True)
     # Define the desired column order
     desired_column_order = ['road', 'id', 'model_type', 'condition', 'name', 'lat', 'lon', 'length']
     # Reassign the DataFrame with the desired column order
@@ -361,9 +345,6 @@ sorted_df = sort_and_remove_duplicates(extracted_df)
 
 # Add missing columns: model_type, name
 full_df = add_modeltype_name(sorted_df)
-
-# Reorder the columns so they match the format
-# reordered_df = reorder_columns(full_df)
 
 # make an array of strings with the names of the roads that are in the data
 roads_array = full_df['road'].unique()
