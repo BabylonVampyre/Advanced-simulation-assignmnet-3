@@ -87,7 +87,7 @@ class BangladeshModel(Model):
         self._agent_records = {}
         self.tables = {}
         #self.datacollector = mesa.DataCollector()
-        self.df_driving_time = pd.DataFrame(columns=['Truck_ID', 'Total_Driving_Time'])
+        self.df_driving_time = pd.DataFrame(columns=['Total_Driving_Time'])
 
         # data collector of delay time and vehicle driving time when the vehicle has arrived at the sink
         #self.datacollector = mesa.DataCollector(model_reporters={},

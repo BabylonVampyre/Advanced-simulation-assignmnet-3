@@ -128,7 +128,7 @@ class Sink(Infra):
         self.tick_removing = self.model.schedule.steps
 
         #save the delition time and truckID into the dataframe that is saved as a model parameter
-        self.model.df_driving_time = self.model.df_driving_time._append({'Truck_ID': vehicle.unique_id, 'Total_Driving_Time': vehicle.removed_at_step - vehicle.generated_at_step}, ignore_index=True)
+        self.model.df_driving_time = self.model.df_driving_time._append({'Total_Driving_Time': vehicle.removed_at_step - vehicle.generated_at_step}, ignore_index=True)
 
         self.model.schedule.remove(vehicle)
         self.vehicle_removed_toggle = not self.vehicle_removed_toggle

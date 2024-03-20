@@ -41,7 +41,7 @@ for i in scenario_list:
 
         #call the dataframe of the single run and change the column names to reflect what seed it used
         df_scenario_singlerun = sim_model.df_driving_time
-        df_scenario_singlerun.columns = ['VehicleID'+str(j),'Driving_Time'+str(j) ]
+        df_scenario_singlerun.columns = ['Driving_Time'+str(j) ]
         #merge the single run data frame with the base dataframe to save all runs of a single scenario in one DF
         df_scenario = pd.concat([df_scenario,df_scenario_singlerun],axis = 1)
 
@@ -49,4 +49,4 @@ for i in scenario_list:
         run_counter += 1
         print(run_counter, '/', number_of_runs, 'Done. Next up: scenario:', scenario_counter, 'seed: ', j)
     scenario_counter += 1
-    df_scenario.to_csv(f"../model/experiment/Scenario{i[0]}.csv")
+    df_scenario.to_csv(f"../model/experiment/Scenario{i[0]}.csv", index = False)
