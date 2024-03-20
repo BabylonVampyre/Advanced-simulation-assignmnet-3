@@ -4,16 +4,16 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-nr_scenarios=5
+nr_scenarios=1
 nr_runs=10
 #open the csv's and save as dataframes
 df={} #collect the trucks and driving time per tick
 for i in range(nr_scenarios): #scenario
     df[i] = pd.DataFrame()
     for j in range(nr_runs): #run
-        df[i]=pd.concat([df[i],pd.read_csv('../model/experiment/Scenario{}_sim{}.csv'.format(i,j))['Driving time of cars leaving']])
-    df[i].columns=['Driving time of cars leaving']
-
+        df[i]=pd.concat([df[i],pd.read_csv('../model/experiment/Scenario{}.csv'.format(i))])
+    #df[i].columns=['Driving time of cars leaving']
+    print(df)
 #collect per scenario all the driving times of all the runs
 df2={}
 for framenr in range(nr_scenarios): #iterate the dataframes
