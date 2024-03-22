@@ -57,16 +57,16 @@ class Bridge(Infra):
         self.condition = condition
         self.length = length
 
-        #make variables for the delay time and broken
+        # make variables for the delay time and broken
         self.delay_time = 0
         self.broken = broken
 
-        #save scenario parameters
+        # save scenario parameters
         self.breakdown_chances = scenario
 
-        #serach what index correspodes with the condition of the bridge
+        # search what index corresponds with the condition of the bridge
         index = self.model.possible_catagories.index(self.condition)
-        #save the bridge its chance to break
+        # save the bridge its chance to break
         self.chance_to_break = self.breakdown_chances[index]
 
         if self.chance_to_break >= (self.random.random() * 100):
@@ -120,8 +120,9 @@ class Sink(Infra):
         # update the tick we are removing at
         self.tick_removing = self.model.schedule.steps
         total_driving_time = vehicle.removed_at_step - vehicle.generated_at_step
-        #save the delition time and truckID into the dataframe that is saved as a model parameter
-        self.model.df_driving_time = self.model.df_driving_time._append({'Total_Driving_Time': total_driving_time}, ignore_index=True)
+        # save the deletion time and truckID into the dataframe that is saved as a model parameter
+        self.model.df_driving_time = self.model.df_driving_time._append(
+            {'Total_Driving_Time': total_driving_time}, ignore_index=True)
 
         self.model.schedule.remove(vehicle)
         self.vehicle_removed_toggle = not self.vehicle_removed_toggle
@@ -171,7 +172,7 @@ class Source(Infra):
                 Source.truck_counter += 1
                 self.vehicle_count += 1
                 self.vehicle_generated_flag = True
-                #print(str(self) + " GENERATE " + str(agent))
+                # print(str(self) + " GENERATE " + str(agent))
         except Exception as e:
             print("Oops!", e.__class__, "occurred.")
 
@@ -221,7 +222,7 @@ class Vehicle(Agent):
 
     path_ids: Series
         the whole path (origin and destination) where the vehicle shall drive
-        It consists the Infras' uniques IDs in a sequential order
+        It consists the Infrastructure uniques IDs in a sequential order
 
     location_index: int
         a pointer to the current Infra in "path_ids" (above)
@@ -239,7 +240,7 @@ class Vehicle(Agent):
 
     """
 
-    # 50 km/h translated into meter per min (changed from 48 so its consistent with assignmnet 2)
+    # 50 km/h translated into meter per min (changed from 48 so its consistent with assignment 2)
     speed = 50 * 1000 / 60
     # One tick represents 1 minute
     step_time = 1
@@ -264,7 +265,7 @@ class Vehicle(Agent):
         self.waited_at = None
         self.removed_at_step = None
 
-        #Set desitination as id of sink where it needs to be removed
+        # Set destination as id of sink where it needs to be removed
         self.destination = None
 
     def __str__(self):
@@ -278,7 +279,7 @@ class Vehicle(Agent):
         Set the origin destination path of the vehicle
         """
         self.path_ids = self.model.get_route(self.generated_by.unique_id)
-        #save the target sink in the self.destination
+        # save the target sink in the self.destination
         self.destination = self.path_ids[-1]
 
     def step(self):
@@ -297,7 +298,7 @@ class Vehicle(Agent):
         """
         To print the vehicle trajectory at each step
         """
-        #print(self)
+        # print(self)
 
     def drive(self):
 
@@ -322,7 +323,7 @@ class Vehicle(Agent):
         next_id = self.path_ids[self.location_index]
         next_infra = self.model.schedule._agents[next_id]  # Access to protected member _agents
 
-        #if the vehicle arrives at a sink and that sink is the one in its destination, arrive and remove
+        # if the vehicle arrives at a sink and that sink is the one in its destination, arrive and remove
         if isinstance(next_infra, Sink) and next_id == self.destination:
             # arrive at the sink
             self.arrive_at_next(next_infra, 0)

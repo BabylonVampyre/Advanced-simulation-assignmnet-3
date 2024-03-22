@@ -75,12 +75,12 @@ class BangladeshModel(Model):
         self.sources = []
         self.sinks = []
 
-        #set seed
+        # set seed
         self.random.seed(seed)
-        #Save scenario to give to the agents in the initiation
+        # Save scenario to give to the agents in the initiation
         self.scenario = scenario
         self.possible_catagories = ['A', 'B', 'C', 'D']
-        #generate the model and generate the networkX and save it
+        # generate the model and generate the networkX and save it
         self.generate_model()
         self.network = self.generate_network()
         self.model_reporters = {}
@@ -88,7 +88,7 @@ class BangladeshModel(Model):
         self.model_vars = {}
         self._agent_records = {}
         self.tables = {}
-        #self.datacollector = mesa.DataCollector()
+        # self.datacollector = mesa.DataCollector()
         self.df_driving_time = pd.DataFrame(columns=['Total_Driving_Time'])
 
     def generate_model(self):
@@ -120,13 +120,13 @@ class BangladeshModel(Model):
                 3. put the path in reversed order and reindex
                 4. add the path to the path_ids_dict so that the vehicles can drive backwards too
                 """
-                #add the path
-                #save the paths as lists to make it consistent with other paths that will be created
+                # add the path
+                # save the paths as lists to make it consistent with other paths that will be created
                 path_ids = df_objects_on_road['id']
                 path_ids.reset_index(inplace=True, drop=True)
                 self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids.tolist()
                 self.path_ids_dict[path_ids[0], None] = path_ids.tolist()
-                #now also the reverse path
+                # now also the reverse path
                 path_ids = path_ids[::-1]
                 path_ids.reset_index(inplace=True, drop=True)
                 self.path_ids_dict[path_ids[0], path_ids.iloc[-1]] = path_ids.tolist()
@@ -170,7 +170,8 @@ class BangladeshModel(Model):
                     self.sources.append(agent.unique_id)
                     self.sinks.append(agent.unique_id)
                 elif model_type == 'bridge':
-                    agent = Bridge(row['id'], self, row['length'], name, row['road'], row['condition'], scenario=self.scenario)
+                    agent = Bridge(row['id'], self, row['length'],
+                                   name, row['road'], row['condition'], scenario=self.scenario)
                 elif model_type == 'link':
                     agent = Link(row['id'], self, row['length'], name, row['road'])
                 elif model_type == 'intersection':
@@ -209,14 +210,16 @@ class BangladeshModel(Model):
         if (source, target) in self.path_ids_dict:
             return self.path_ids_dict[source, target]
 
-        else:  #generate specific path
+        else:  # generate specific path
 
-            #generate lists of node and edge ids (sadly not one function to generate one list directly)
-            node_ids = nx.shortest_path(self.network, source=source, target=target, method="dijkstra")  #returns list of all steps
+            # generate lists of node and edge ids (sadly not one function to generate one list directly)
+            node_ids = nx.shortest_path(
+                self.network, source=source, target=target, method="dijkstra")   # returns list of all steps
             edge_ids = [self.network[u][v]['link_id'] for u, v in zip(node_ids, node_ids[1:])]
 
-            #interweaving the lists
-            path_ids = [x for y in zip(node_ids, edge_ids) for x in y] + [node_ids[-1]]  #assuming the nodes list is 1 longer than the edge list.
+            # interweaving the lists
+            path_ids = [x for y in zip(node_ids, edge_ids)
+                        for x in y] + [node_ids[-1]]  # assuming the nodes list is 1 longer than the edge list.
 
             # add the path
             self.path_ids_dict[path_ids[0], path_ids[-1]] = path_ids
@@ -233,7 +236,7 @@ class BangladeshModel(Model):
         Advance the simulation by one step.
         """
         self.schedule.step()
-        #self.datacollector.collect(self)
+        # self.datacollector.collect(self)
 
     def generate_network(self):
         """
@@ -266,13 +269,14 @@ class BangladeshModel(Model):
                 previous_id = df_network.at[index-1, "id"]
                 upcoming_id = df_network.at[index+1, "id"]
                 model_weight = row["length"]
-                #add edge
+                # add edge
                 network.add_edge(previous_id, upcoming_id, model_weight=model_weight)
-                #add link id as edge attribute
+                # add link id as edge attribute
                 nx.set_edge_attributes(network, {(previous_id, upcoming_id): {"link_id": df_network.at[index, "id"]}})
 
 #       plot the network, with the ID as a label for the node
-#       pos = {network_coordinates: (long, lat) for (network_coordinates, (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
+#       pos = {network_coordinates: (long, lat) for (network_coordinates,
+        #       (lat, long)) in nx.get_node_attributes(network, 'pos').items()}
 #       nx.draw(network, pos, with_labels=True, node_size=0.01, font_size=0.02)
 #       plt.show()
 
